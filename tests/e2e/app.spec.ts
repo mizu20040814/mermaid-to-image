@@ -144,3 +144,18 @@ test('PNG をダウンロードできる（日本語の図・白背景で 2 倍�
   }, buf.toString('base64'));
   expect(pixel).toEqual([255, 255, 255, 255]);
 });
+
+test('入力直後に両方のボタンを押しても、どちらのダウンロードも終わる', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#download-svg')).toBeEnabled();
+  await page.locator('#editor').fill('flowchart LR\n  X[同時] --> Y');
+  const svgDl = page.waitForEvent('download', (d) => d.suggestedFilename() === 'diagram.svg');
+  const pngDl = page.waitForEvent('download', (d) => d.suggestedFilename() === 'diagram.png');
+  // 2 つのクリックを同じタスク内で発火させ、両方が未反映の入力を見た状態から始める
+  await page.evaluate(() => {
+    document.querySelector<HTMLButtonElement>('#download-svg')!.click();
+    document.querySelector<HTMLButtonElement>('#download-png')!.click();
+  });
+  const [svg] = await Promise.all([svgDl, pngDl]);
+  expect((await readFile(await svg.path())).toString('utf8')).toContain('同時');
+});

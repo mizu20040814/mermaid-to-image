@@ -13,6 +13,8 @@ const svgButton = document.querySelector<HTMLButtonElement>('#download-svg')!;
 export let currentSvg: string | null = null;
 
 let seq = 0;
+// 入力があってから最新の描画が終わるまで true（その間の書き出しは最新の図を待つ）
+let pending = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 function setButtons(enabled: boolean): void {
@@ -28,10 +30,12 @@ async function update(): Promise<void> {
     errorBox.textContent = '';
     currentSvg = null;
     setButtons(false);
+    if (my === seq) pending = false;
     return;
   }
   const result = await renderDiagram(code);
   if (my !== seq) return;
+  pending = false;
   if (result.ok) {
     preview.innerHTML = result.svg;
     errorBox.textContent = '';
@@ -44,21 +48,34 @@ async function update(): Promise<void> {
   }
 }
 
-svgButton.addEventListener('click', () => {
-  if (currentSvg === null) return;
+// 未反映の入力があれば今すぐ描画を済ませ、最新のコードに対応する SVG だけを返す
+async function freshSvg(): Promise<string | null> {
+  while (pending) {
+    clearTimeout(timer);
+    await update();
+  }
+  return currentSvg;
+}
+
+svgButton.addEventListener('click', async () => {
   try {
-    const { svg } = prepareSvgForExport(currentSvg);
+    const svgSource = await freshSvg();
+    if (svgSource === null) return;
+    const { svg } = prepareSvgForExport(svgSource);
     downloadBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), 'diagram.svg');
-  } catch {
+  } catch (e) {
+    console.error(e);
     errorBox.textContent = 'SVG の書き出しに失敗しました';
   }
 });
 
 pngButton.addEventListener('click', async () => {
-  if (currentSvg === null) return;
   try {
-    downloadBlob(await svgToPngBlob(currentSvg), 'diagram.png');
-  } catch {
+    const svgSource = await freshSvg();
+    if (svgSource === null) return;
+    downloadBlob(await svgToPngBlob(svgSource), 'diagram.png');
+  } catch (e) {
+    console.error(e);
     errorBox.textContent = 'PNG の書き出しに失敗しました';
   }
 });
@@ -67,6 +84,7 @@ initMermaid();
 setButtons(false);
 editor.value = sample;
 editor.addEventListener('input', () => {
+  pending = true;
   clearTimeout(timer);
   timer = setTimeout(() => void update(), 300);
 });

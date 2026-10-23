@@ -77,12 +77,42 @@ test('SVG をダウンロードできる', async ({ page }) => {
   expect(text).toContain('開始');
 });
 
+test('入力直後にダウンロードしても最新の図が書き出される（SVG）', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#download-svg')).toBeEnabled();
+  await page.locator('#editor').fill('flowchart LR\n  X[新しい] --> Y');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#download-svg').click()]);
+  const text = (await readFile(await dl.path())).toString('utf8');
+  expect(text).toContain('新しい');
+  expect(text).not.toContain('開始');
+});
+
 test('PNG をダウンロードできる（日本語の図・白背景で 2 倍）', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#download-png')).toBeEnabled();
+  const vb = await page.locator('#preview svg').evaluate((el) => {
+    const b = (el as SVGSVGElement).viewBox.baseVal;
+    return { w: b.width, h: b.height };
+  });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#download-png').click()]);
   expect(dl.suggestedFilename()).toBe('diagram.png');
   const buf = await readFile(await dl.path());
   expect(buf.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  expect(buf.readUInt32BE(16)).toBeGreaterThan(100); // IHDR の幅
+  expect(buf.readUInt32BE(16)).toBe(Math.round(vb.w * 2)); // IHDR の幅
+  expect(buf.readUInt32BE(20)).toBe(Math.round(vb.h * 2)); // IHDR の高さ
+  const pixel = await page.evaluate(async (b64) => {
+    const img = new Image();
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error('load'));
+      img.src = 'data:image/png;base64,' + b64;
+    });
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+  }, buf.toString('base64'));
+  expect(pixel).toEqual([255, 255, 255, 255]);
 });

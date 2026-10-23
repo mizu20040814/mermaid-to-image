@@ -2,15 +2,25 @@
   "name": "mermaid-to-image",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "mmdc": "mmdc -p puppeteer-config.json"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "^12.0.0"
-  }
+    "mermaid": "^12.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "type": "module"
 }

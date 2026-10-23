@@ -1,0 +1,94 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  color: #1f2328;
+  background: #f6f8fa;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #d0d7de;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions button {
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pane h2,
+.pane label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+#editor {
+  width: 100%;
+  min-height: 60vh;
+  padding: 12px;
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  resize: vertical;
+}
+
+#preview {
+  min-height: 60vh;
+  padding: 12px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #d0d7de;
+}
+
+#error {
+  color: #b42318;
+  white-space: pre-wrap;
+}
+
+#error:empty {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .app-main {
+    grid-template-columns: 1fr;
+  }
+
+  #editor,
+  #preview {
+    min-height: 40vh;
+  }
+}

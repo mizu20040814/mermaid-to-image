@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test('画面の骨格が表示される', async ({ page }) => {
   await page.goto('/');
@@ -64,4 +65,24 @@ test('HTML ラベルを使わず、エラー後も body に余計な SVG を残�
   await page.locator('#editor').fill('flowchart LR\n  A -->');
   await expect(page.locator('#error')).not.toBeEmpty();
   expect(await page.locator('body > svg, body > div[id^="d"]').count()).toBe(0);
+});
+
+test('SVG をダウンロードできる', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#download-svg')).toBeEnabled();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#download-svg').click()]);
+  expect(dl.suggestedFilename()).toBe('diagram.svg');
+  const text = (await readFile(await dl.path())).toString('utf8');
+  expect(text).toContain('<svg');
+  expect(text).toContain('開始');
+});
+
+test('PNG をダウンロードできる（日本語の図・白背景で 2 倍）', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#download-png')).toBeEnabled();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#download-png').click()]);
+  expect(dl.suggestedFilename()).toBe('diagram.png');
+  const buf = await readFile(await dl.path());
+  expect(buf.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  expect(buf.readUInt32BE(16)).toBeGreaterThan(100); // IHDR の幅
 });

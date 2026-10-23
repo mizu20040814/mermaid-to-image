@@ -84,6 +84,8 @@ initMermaid();
 setButtons(false);
 editor.value = sample;
 editor.addEventListener('input', () => {
+  // 描画中の古い入力の結果を無効にし、それが pending を解除しないようにする
+  seq++;
   pending = true;
   clearTimeout(timer);
   timer = setTimeout(() => void update(), 300);

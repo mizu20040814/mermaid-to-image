@@ -87,6 +87,34 @@ test('入力直後にダウンロードしても最新の図が書き出され�
   expect(text).not.toContain('開始');
 });
 
+test('描画中に入力し、古い描画が先に終わっても最新の図が書き出される', async ({ page }) => {
+  // sequenceDiagram のチャンクを手動で解放するまで止め、1 回目の描画を描画中のまま保つ
+  let release!: () => void;
+  const released = new Promise<void>((r) => (release = r));
+  await page.route('**/assets/sequenceDiagram-*.js', async (route) => {
+    await released;
+    await route.continue();
+  });
+  await page.goto('/');
+  await expect(page.locator('#download-svg')).toBeEnabled();
+  // 以降のデバウンスタイマーは clock を進めない限り発火しない
+  await page.clock.install();
+  await page.clock.pauseAt(Date.now() + 10_000);
+  await page.locator('#editor').fill('sequenceDiagram\n  A->>B: 古い');
+  await page.clock.runFor(300);
+  // 1 回目の描画中に書き換える（このデバウンスはまだ発火させない）
+  await page.locator('#editor').fill('flowchart LR\n  X[新しい] --> Y');
+  // 1 回目の描画を終わらせる
+  release();
+  await page.waitForTimeout(1000);
+  // 時計を戻してすぐクリックする（2 回目のデバウンスが発火するより先）
+  await page.clock.resume();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#download-svg').click()]);
+  const text = (await readFile(await dl.path())).toString('utf8');
+  expect(text).toContain('新しい');
+  expect(text).not.toContain('古い');
+});
+
 test('PNG をダウンロードできる（日本語の図・白背景で 2 倍）', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#download-png')).toBeEnabled();

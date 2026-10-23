@@ -17,10 +17,12 @@ concurrency:
 
 jobs:
   autofix:
-    # Codex のレビューで、かつ同じリポジトリのブランチからの PR に限る（フォークにはシークレットを渡さない）
+    # Codex のレビューで、リポジトリのオーナーが同じリポジトリのブランチから作った PR に限る
+    # （このジョブはシークレットを持ったまま PR のコードでテストを実行するため）
     if: >-
       github.event.review.user.login == 'chatgpt-codex-connector[bot]' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -34,7 +36,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      # install 時のスクリプト（postinstall など）は実行しない
+      - run: npm ci --ignore-scripts
 
       - run: npx playwright install --with-deps chromium
 

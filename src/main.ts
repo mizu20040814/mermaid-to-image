@@ -16,6 +16,8 @@ let seq = 0;
 // 入力があってから最新の描画が終わるまで true（その間の書き出しは最新の図を待つ）
 let pending = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
+// ダウンロードのために始めた描画（同時のクリックで共有する）
+let refreshing: Promise<void> | null = null;
 
 function setButtons(enabled: boolean): void {
   pngButton.disabled = !enabled;
@@ -52,7 +54,11 @@ async function update(): Promise<void> {
 async function freshSvg(): Promise<string | null> {
   while (pending) {
     clearTimeout(timer);
-    await update();
+    // 同時に押されたボタン同士で別々に描画を始めると互いに無効化し合うので、進行中の描画を共有する
+    refreshing ??= update().finally(() => {
+      refreshing = null;
+    });
+    await refreshing;
   }
   return currentSvg;
 }
